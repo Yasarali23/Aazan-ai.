@@ -1,0 +1,322 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+  shadowDatabaseUrl = env("SHADOW_DATABASE_URL")
+}
+
+// ============= AUTH =============
+model Account {
+  id                 String  @id @default(cuid())
+  userId             String
+  type               String
+  provider           String
+  providerAccountId  String
+  refresh_token      String?  @db.Text
+  access_token       String?  @db.Text
+  expires_at         Int?
+  token_type         String?
+  scope              String?
+  id_token           String?  @db.Text
+  session_state      String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+  @@index([userId])
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+}
+
+// ============= USERS =============
+model User {
+  id            String   @id @default(cuid())
+  name          String?
+  email         String?  @unique
+  emailVerified DateTime?
+  password      String?
+  avatar        String?
+  bio           String?
+  phone         String?
+
+  // Subscription & Billing
+  stripeId          String?      @unique
+  subscriptionTier  String       @default("free") // free, pro, enterprise
+  subscriptionEnd   DateTime?
+  credits           Int          @default(0)
+  creditLimit       Int          @default(100)
+
+  // Preferences
+  theme             String       @default("system") // light, dark, system
+  language          String       @default("en")
+  emailNotifications Boolean      @default(true)
+  apiKey            String?      @unique
+
+  // Timestamps
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  accounts       Account[]
+  sessions       Session[]
+  chats          Chat[]
+  memories       Memory[]
+  documents      Document[]
+  agents         Agent[]
+  workspaces     WorkspaceUser[]
+  invoices       Invoice[]
+  apiLogs        ApiLog[]
+
+  @@index([email])
+  @@index([stripeId])
+}
+
+// ============= CHAT =============
+model Chat {
+  id          String   @id @default(cuid())
+  userId      String
+  title       String
+  description String?  @db.Text
+  model       String   @default("claude-sonnet")
+  temperature Float    @default(0.7)
+  maxTokens   Int      @default(2000)
+  systemPrompt String? @db.Text
+  
+  // Status
+  archived    Boolean  @default(false)
+  pinned      Boolean  @default(false)
+
+  // Timestamps
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  messages    Message[]
+  memories    ChatMemory[]
+
+  @@index([userId])
+  @@index([createdAt])
+}
+
+model Message {
+  id        String   @id @default(cuid())
+  chatId    String
+  role      String   // "user", "assistant", "system"
+  content   String   @db.Text
+  tokens    Int?
+  
+  // For streaming
+  isStreaming Boolean @default(false)
+
+  // Metadata
+  metadata  Json?
+  createdAt DateTime @default(now())
+
+  chat      Chat     @relation(fields: [chatId], references: [id], onDelete: Cascade)
+
+  @@index([chatId])
+  @@index([createdAt])
+}
+
+// ============= MEMORY =============
+model Memory {
+  id        String   @id @default(cuid())
+  userId    String
+  type      String   // "fact", "preference", "context", "skill"
+  title     String
+  content   String   @db.Text
+  tags      String[] @default([])
+  
+  // Retrieval
+  embedding Float[]  @default([])
+  
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([tags])
+}
+
+model ChatMemory {
+  id        String   @id @default(cuid())
+  chatId    String
+  memoryId  String?
+  summary   String   @db.Text
+  
+  createdAt DateTime @default(now())
+
+  chat      Chat     @relation(fields: [chatId], references: [id], onDelete: Cascade)
+
+  @@index([chatId])
+}
+
+// ============= DOCUMENTS =============
+model Document {
+  id        String   @id @default(cuid())
+  userId    String
+  name      String
+  type      String   // "pdf", "doc", "image", "text"
+  url       String
+  s3Key     String
+  
+  // Metadata
+  size      Int
+  pages     Int?
+  
+  // Processing
+  processed Boolean  @default(false)
+  content   String?  @db.Text
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([type])
+}
+
+// ============= AI AGENTS =============
+model Agent {
+  id          String   @id @default(cuid())
+  userId      String
+  name        String
+  type        String   // "doctor", "lawyer", "crypto", "teacher", etc.
+  description String?  @db.Text
+  systemPrompt String? @db.Text
+  tools       String[] @default([])
+  
+  enabled     Boolean  @default(true)
+  
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([type])
+}
+
+// ============= TEAMS & WORKSPACE =============
+model Workspace {
+  id          String   @id @default(cuid())
+  name        String
+  slug        String   @unique
+  description String?  @db.Text
+  logo        String?
+  
+  plan        String   @default("free") // free, pro, enterprise
+  
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  members     WorkspaceUser[]
+  projects    Project[]
+
+  @@index([slug])
+}
+
+model WorkspaceUser {
+  id          String   @id @default(cuid())
+  userId      String
+  workspaceId String
+  role        String   @default("member") // owner, admin, member
+  
+  joinedAt    DateTime @default(now())
+
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, workspaceId])
+  @@index([workspaceId])
+}
+
+model Project {
+  id          String   @id @default(cuid())
+  workspaceId String
+  name        String
+  description String? @db.Text
+  
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+
+  @@index([workspaceId])
+}
+
+// ============= PAYMENTS =============
+model Invoice {
+  id          String   @id @default(cuid())
+  userId      String
+  
+  amount      Int      // in cents
+  currency    String   @default("usd")
+  status      String   @default("pending") // pending, paid, failed
+  
+  description String?
+  stripeId    String?  @unique
+  
+  createdAt   DateTime @default(now())
+  paidAt      DateTime?
+
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([status])
+}
+
+// ============= ANALYTICS =============
+model ApiLog {
+  id        String   @id @default(cuid())
+  userId    String
+  
+  endpoint  String
+  method    String
+  statusCode Int
+  latency   Int      // in ms
+  
+  createdAt DateTime @default(now())
+
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([createdAt])
+}
+
+model Analytics {
+  id        String   @id @default(cuid())
+  
+  totalUsers      Int @default(0)
+  activeUsers     Int @default(0)
+  totalChats      Int @default(0)
+  totalTokens     Int @default(0)
+  
+  date      DateTime @unique @default(now())
+
+  @@index([date])
+}

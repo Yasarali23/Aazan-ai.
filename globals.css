@@ -1,0 +1,110 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 0 0% 100%;
+    --foreground: 213 15% 12%;
+    --card: 0 0% 100%;
+    --card-foreground: 213 15% 12%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 213 15% 12%;
+    --primary: 217 92% 51%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 125 82% 51%;
+    --secondary-foreground: 0 0% 100%;
+    --muted: 213 13% 84%;
+    --muted-foreground: 214 11% 34%;
+    --accent: 186 100% 50%;
+    --accent-foreground: 213 15% 12%;
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 213 13% 92%;
+    --input: 213 13% 92%;
+    --ring: 217 92% 51%;
+    --radius: 0.5rem;
+  }
+
+  .dark {
+    --background: 213 15% 8%;
+    --foreground: 0 0% 98%;
+    --card: 213 14% 12%;
+    --card-foreground: 0 0% 98%;
+    --popover: 213 14% 12%;
+    --popover-foreground: 0 0% 98%;
+    --primary: 217 92% 51%;
+    --primary-foreground: 213 15% 8%;
+    --secondary: 125 82% 51%;
+    --secondary-foreground: 213 15% 8%;
+    --muted: 213 13% 24%;
+    --muted-foreground: 214 11% 66%;
+    --accent: 186 100% 50%;
+    --accent-foreground: 213 15% 8%;
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 213 15% 8%;
+    --border: 213 13% 18%;
+    --input: 213 13% 18%;
+    --ring: 217 92% 51%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground;
+  }
+
+  /* Smooth scrollbar */
+  ::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+
+  ::-webkit-scrollbar-track {
+    @apply bg-muted;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    @apply bg-muted-foreground rounded;
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    @apply bg-primary;
+  }
+}
+
+@layer components {
+  /* Gradient background */
+  .gradient-bg {
+    @apply bg-gradient-to-br from-primary/20 via-secondary/20 to-accent/20;
+  }
+
+  /* Glass morphism */
+  .glass {
+    @apply bg-white/30 dark:bg-white/10 backdrop-blur-md border border-white/20;
+  }
+
+  /* Premium button */
+  .btn-premium {
+    @apply px-6 py-2 rounded-lg font-semibold transition-all duration-200 hover:scale-105 active:scale-95;
+  }
+
+  /* Smooth transition */
+  .transition-smooth {
+    @apply transition-all duration-300 ease-in-out;
+  }
+}
+
+/* Selection styles */
+::selection {
+  @apply bg-primary text-primary-foreground;
+}
+
+/* Focus visible */
+:focus-visible {
+  @apply outline-none ring-2 ring-ring ring-offset-2 ring-offset-background;
+}
